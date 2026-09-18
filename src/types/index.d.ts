@@ -1,19 +1,22 @@
 export * from './dae'
+import type { Connection as SingboxConnectionRawMessage } from '@/gen/daemon/started_service_pb'
 import type { DaeConnectionRawMessage } from './dae'
 
-export type BackendType = 'clash' | 'dae'
+// 后端登录类型:'clash' 走 Clash REST/WS API,'dae' 走 dae REST API,
+// 'singbox' 走 sing-box API(gRPC)。旧记录缺省按 'clash' 迁移。
+export type BackendType = 'clash' | 'dae' | 'singbox'
 
 export type Backend = {
   type: BackendType
   protocol: string
   host: string
   port: string
-  secondaryPath: string
-  password: string
+  secondaryPath: string // 仅 clash
+  password: string // 通用:Clash secret / sing-box gRPC Bearer token
   uuid: string
   label?: string
-  disableUpgradeCore?: boolean
-  disableTunMode?: boolean
+  disableUpgradeCore?: boolean // 仅 clash
+  disableTunMode?: boolean // 仅 clash
 }
 
 export type Config = {
@@ -146,7 +149,8 @@ export type ClashConnectionRawMessage = {
   }
 }
 
-export type ConnectionRawMessage = ClashConnectionRawMessage | DaeConnectionRawMessage
+export type ConnectionRawMessage =
+  ClashConnectionRawMessage | DaeConnectionRawMessage | SingboxConnectionRawMessage
 
 export type Connection = ConnectionRawMessage & {
   downloadSpeed: number

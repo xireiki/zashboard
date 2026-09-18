@@ -457,6 +457,10 @@ const accessor: ConnectionAccessor = {
   remoteAddress: (connection) => asDae(connection).daeRaw.dst || '',
   isDirect: (connection) => asDae(connection).daeRaw.outbound === 'direct',
   smartBlock: () => undefined,
+  // dae 不提供这些字段。
+  protocol: () => '',
+  outboundType: () => '',
+  fromOutbound: () => '',
 }
 
 const POLL_INTERVAL = 1000
