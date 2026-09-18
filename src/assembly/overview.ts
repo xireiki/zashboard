@@ -29,6 +29,7 @@ const makeInitValue = (): HistoryPoint[] => {
 }
 
 export const memory = ref<number>(0)
+export const goroutines = ref<number>(0)
 export const memoryHistory = ref(makeInitValue())
 export const connectionsHistory = ref(makeInitValue())
 
@@ -80,6 +81,7 @@ export const initSatistic = () => {
       }
 
       memory.value = data.inuse
+      goroutines.value = data.goroutines ?? 0
       memoryHistory.value.push({
         value: [timestamp, data.inuse],
         name: timestamp,
@@ -135,6 +137,7 @@ export const stopSatistic = () => {
   cancel?.()
   cancel = undefined
   memory.value = 0
+  goroutines.value = 0
   downloadSpeed.value = 0
   uploadSpeed.value = 0
   downloadSpeedHistory.value = makeInitValue()

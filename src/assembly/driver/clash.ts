@@ -123,6 +123,10 @@ const accessor: ConnectionAccessor = {
   remoteAddress: (connection) => asClash(connection).metadata.remoteDestination,
   isDirect: (connection) => getFinalProxyType(asClash(connection)) === PROXY_TYPE.Direct,
   smartBlock: (connection) => asClash(connection).metadata.smartBlock,
+  // clash 不提供这些字段。
+  protocol: () => '',
+  outboundType: () => '',
+  fromOutbound: () => '',
 }
 
 const subscribeConnections = (): Stream<ConnectionsPayload> => {

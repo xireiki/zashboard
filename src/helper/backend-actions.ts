@@ -89,7 +89,7 @@ const runOnce = async (
 }
 
 export const backendActions = computed<BackendAction[]>(() => {
-  if (!activeBackend.value) return []
+  if (!can('coreActions')) return []
 
   const actions: BackendAction[] = []
 
