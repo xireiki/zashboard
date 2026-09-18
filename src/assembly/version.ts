@@ -1,5 +1,6 @@
 import HonkLogo from '@/assets/images/honk.svg'
 import MetacubexLogo from '@/assets/images/metacubex.jpg'
+import SingBoxLogo from '@/assets/images/sing-box.svg'
 import { MIHOMO, MIHOMO_CHANNEL } from '@/constant'
 import { fetchWithLocalCache } from '@/helper/cache'
 import { getRequestErrorMessage } from '@/helper/request-error'
@@ -24,14 +25,21 @@ export type BackendProbe = {
 
 export const backendProbe = ref<BackendProbe | undefined>()
 
+// sing-box 内核启动时刻(ms epoch);0 表示未知 / 当前后端无此能力。
+// 仅 sing-box API(GetStartedAt)提供,Clash /version 无运行时长。
+export const startedAt = ref(0)
+
 const detectCore = (versionString: string): Core => {
   if (!versionString) return Core.Unknown
+  if (versionString.includes('sing-box')) return Core.Singbox
   if (/\bhonk\b/i.test(versionString)) return Core.Honk
   return Core.Mihomo
 }
 
 export const coreBrand = computed(() => {
   switch (core.value) {
+    case Core.Singbox:
+      return { logo: SingBoxLogo, url: 'https://github.com/sagernet/sing-box' }
     case Core.Honk:
       return { logo: HonkLogo, url: 'https://github.com/Glassyiris/honk' }
     default:
@@ -65,6 +73,19 @@ export const upgradeCore = (channel: 'release' | 'alpha' | 'auto') =>
 
 export const upgradeUI = () => driver().system.upgradeUI()
 
+const fetchSingboxStartedAt = async (): Promise<number> => {
+  const { getSingboxClient } = await import('@/api/singbox/client')
+  const client = getSingboxClient()?.client
+  if (!client) return 0
+
+  try {
+    const res = await client.getStartedAt({})
+    return Number(res.startedAt)
+  } catch {
+    return 0
+  }
+}
+
 const probeBackendVersion = async (backend: Backend) => {
   const startAt = Date.now()
   let versionString: string
@@ -93,6 +114,7 @@ const probeBackendVersion = async (backend: Backend) => {
     latency: Date.now() - startAt,
     message: '',
   }
+  startedAt.value = can('startedAt') ? await fetchSingboxStartedAt() : 0
 
   if (!can('coreUpdateCheck') || !checkUpgradeCore.value || backend.disableUpgradeCore) return
 
@@ -115,6 +137,7 @@ export const probeActiveBackend = () => {
 
   resetCore()
   version.value = ''
+  startedAt.value = 0
   isCoreUpdateAvailable.value = false
   backendProbe.value = backend
     ? { uuid: backend.uuid, status: 'probing', latency: 0, message: '' }

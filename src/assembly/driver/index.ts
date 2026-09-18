@@ -1,10 +1,12 @@
 import { activeBackend } from '@/store/setup'
 import type { Backend, BackendType } from '@/types'
 import { clashDriver } from './clash'
+import { singboxDriver } from './singbox'
 import type { Driver } from './types'
 
 const drivers: Record<BackendType, Driver> = {
   clash: clashDriver,
+  singbox: singboxDriver,
 }
 
 export const driverFor = (backend?: Backend | null) =>

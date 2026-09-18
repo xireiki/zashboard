@@ -1,5 +1,17 @@
 <template>
   <div class="flex flex-col gap-3">
+    <div class="flex flex-col gap-1">
+      <label class="text-sm">{{ $t('backendType') }}</label>
+      <SelectInput
+        class="select select-sm w-full"
+        v-model="model.type"
+        :options="[
+          { value: 'clash', label: $t('clashApi') },
+          { value: 'singbox', label: $t('singboxApi') },
+        ]"
+      />
+    </div>
+
     <div class="flex gap-2">
       <div class="flex w-24 flex-none flex-col gap-1">
         <label class="text-sm">{{ $t('protocol') }}</label>
@@ -32,7 +44,10 @@
       </div>
     </div>
 
-    <div class="flex flex-col gap-1">
+    <div
+      v-if="model.type === 'clash'"
+      class="flex flex-col gap-1"
+    >
       <label class="flex items-center gap-1 text-sm">
         <span>{{ $t('secondaryPath') }} ({{ $t('optional') }})</span>
         <span

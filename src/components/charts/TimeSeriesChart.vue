@@ -52,15 +52,17 @@ import { getChartPointValue } from './chart-types'
 
 const props = withDefaults(
   defineProps<{
-    title: string
+    title?: string
     data: ChartSeries[]
     labelFormatter: (value: number) => string
     tooltipFormatter: (value: ChartTooltipParam[]) => string
     yAxisFloor?: number
+    xAxisMode?: 'time' | 'seconds'
     windowSeconds?: number
     showPauseButton?: boolean
   }>(),
   {
+    xAxisMode: 'time',
     windowSeconds: 20,
     showPauseButton: true,
   },
@@ -82,13 +84,16 @@ const legend = computed(() =>
 )
 
 const options = computed<EChartOption>(() => {
+  const isSeconds = props.xAxisMode === 'seconds'
   const lastPoint = props.data[0]?.data.at(-1)
-  const latest = lastPoint ? getChartPointValue(lastPoint)[0] : Date.now()
+  const latest = lastPoint ? getChartPointValue(lastPoint)[0] : isSeconds ? 0 : Date.now()
 
   return {
     animationDurationUpdate: 1000,
     animationEasingUpdate: 'linear',
-    grid: { left: 42, top: 12, right: 10, bottom: 8 },
+    grid: isSeconds
+      ? { left: 42, top: 12, right: 10, bottom: 24 }
+      : { left: 42, top: 12, right: 10, bottom: 8 },
     tooltip: {
       show: true,
       trigger: 'axis',
@@ -104,15 +109,31 @@ const options = computed<EChartOption>(() => {
       },
       formatter: props.tooltipFormatter,
     },
-    xAxis: {
-      type: 'time',
-      min: latest - (props.windowSeconds - 1) * 1000,
-      max: latest - 1000,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { show: false },
-      axisLabel: { show: false },
-    },
+    xAxis: isSeconds
+      ? {
+          type: 'value',
+          min: latest - props.windowSeconds,
+          max: latest,
+          axisLine: { show: false },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: {
+            show: true,
+            color: colors.textMuted,
+            fontFamily: fontFamily.value,
+            fontSize: 9,
+            formatter: (value: number) => (value < 0 ? '' : `${Math.round(value)} s`),
+          },
+        }
+      : {
+          type: 'time',
+          min: latest - (props.windowSeconds - 1) * 1000,
+          max: latest - 1000,
+          axisLine: { show: false },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+        },
     yAxis: {
       type: 'value',
       splitNumber: 3,

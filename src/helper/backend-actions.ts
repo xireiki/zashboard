@@ -87,7 +87,7 @@ const runOnce = async (
 }
 
 export const backendActions = computed<BackendAction[]>(() => {
-  if (!activeBackend.value) return []
+  if (!can('coreActions')) return []
 
   const actions: BackendAction[] = []
 
@@ -162,23 +162,28 @@ export const backendActions = computed<BackendAction[]>(() => {
     })
   }
 
-  actions.push({
-    key: k.flushDNSCache,
-    label: 'flushDNSCache',
-    icon: TrashIcon,
-    running: isDNSCacheFlushing.value,
-    opensModal: false,
-    run: () => runOnce('flushDNSCache', isDNSCacheFlushing, flushDNSCache, 'flushDNSCacheSuccess'),
-  })
+  if (can('dnsFlush')) {
+    actions.push({
+      key: k.flushDNSCache,
+      label: 'flushDNSCache',
+      icon: TrashIcon,
+      running: isDNSCacheFlushing.value,
+      opensModal: false,
+      run: () =>
+        runOnce('flushDNSCache', isDNSCacheFlushing, flushDNSCache, 'flushDNSCacheSuccess'),
+    })
+  }
 
-  actions.push({
-    key: k.flushFakeIP,
-    label: 'flushFakeIP',
-    icon: TrashIcon,
-    running: isFakeIPFlushing.value,
-    opensModal: false,
-    run: () => runOnce('flushFakeIP', isFakeIPFlushing, flushFakeIP, 'flushFakeIPSuccess'),
-  })
+  if (can('fakeIPFlush')) {
+    actions.push({
+      key: k.flushFakeIP,
+      label: 'flushFakeIP',
+      icon: TrashIcon,
+      running: isFakeIPFlushing.value,
+      opensModal: false,
+      run: () => runOnce('flushFakeIP', isFakeIPFlushing, flushFakeIP, 'flushFakeIPSuccess'),
+    })
+  }
 
   if (hasSmartGroup.value) {
     actions.push({

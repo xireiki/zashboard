@@ -50,6 +50,7 @@ export interface TrafficSample {
 
 export interface MemorySample {
   inuse: number
+  goroutines?: number
 }
 
 export interface ConnectionAccessor {
@@ -72,6 +73,9 @@ export interface ConnectionAccessor {
   remoteAddress(connection: Connection): string
   isDirect(connection: Connection): boolean
   smartBlock(connection: Connection): string | undefined
+  protocol(connection: Connection): string
+  outboundType(connection: Connection): string
+  fromOutbound(connection: Connection): string
 }
 
 export interface SystemDriver {

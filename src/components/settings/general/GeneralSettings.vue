@@ -20,7 +20,10 @@
         <DashboardSettings icon-only />
       </SettingItem>
       <LanguageSelect />
-      <SettingItem :setting-key="k.autoUpgradeDashboard">
+      <SettingItem
+        :setting-key="k.autoUpgradeDashboard"
+        :when="showDashboardUpgrade"
+      >
         <div class="setting-item-label">{{ $t('autoUpgradeDashboard') }}</div>
         <input
           v-model="autoUpgradeDashboard"
