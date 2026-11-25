@@ -246,6 +246,8 @@ const singboxCaps = computed<Caps>(() => ({
   latencyTest: true,
   // CloseConnection / CloseAllConnections 已在 driver 中接好，放开连接页的关闭入口。
   connectionsClose: true,
+  // GetRules / ChangeRuleStatus 已在 driver 中接好，放开规则页与临时禁用。
+  rules: true,
   proxyProviderUpdate: true,
   proxyProviderHealthCheck: true,
   ruleProviders: true,

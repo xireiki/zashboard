@@ -17,7 +17,7 @@ import {
 } from '@/gen/daemon/started_service_pb'
 import { automaticDisconnection, iconReflectList, speedtestTimeout } from '@/store/settings'
 import { activeBackend } from '@/store/setup'
-import type { Config, Connection, Log, Proxy, ProxyProvider, RuleProvider } from '@/types'
+import type { Config, Connection, Log, Proxy, ProxyProvider, Rule, RuleProvider } from '@/types'
 import { shallowRef, watch } from 'vue'
 import { apiVersion } from '../backend'
 import { defaultConfig } from '../config'
@@ -509,13 +509,44 @@ const fetchRuleProviders = async (): Promise<RuleProvider[]> => {
   }
 }
 
+const routeTarget = (action: string) =>
+  action.startsWith('route(') ? action.slice(6, -1).split(',')[0].trim() : action
+
+const fetchRules = async (): Promise<Rule[]> => {
+  const client = getSingboxClient()?.client
+  if (!client) return []
+
+  try {
+    const res = await client.getRules({})
+
+    return res.rules.map((rule, index) => ({
+      type: rule.type,
+      payload: rule.payload,
+      proxy: routeTarget(rule.proxy),
+      size: -1,
+      uuid: rule.uuid,
+      disabled: rule.disabled,
+      index,
+    }))
+  } catch {
+    return []
+  }
+}
+
 const rules: RulesDriver = {
-  fetch: async () => ({ rules: [], providers: await fetchRuleProviders() }),
+  fetch: async () => ({
+    rules: await fetchRules(),
+    providers: await fetchRuleProviders(),
+  }),
   updateProvider: async (name) => {
     const client = getSingboxClient()?.client
     if (client) await client.updateRuleProvider({ tag: name })
   },
-  toggleDisabled: async () => undefined,
+  toggleDisabled: async (rule) => {
+    if (!rule.uuid) return
+    const client = getSingboxClient()?.client
+    if (client) await client.changeRuleStatus({ uuid: rule.uuid })
+  },
 }
 
 const config: ConfigDriver = {
