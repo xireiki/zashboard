@@ -86,6 +86,7 @@ export type Cap =
   | 'independentLatency'
   | 'coreUpdateCheck'
   | 'configPatch'
+  | 'modeSwitch'
   | 'coreActions'
   | 'customGlobalNode'
   | 'logTypeFilter'
@@ -150,6 +151,7 @@ const clashCaps = computed<Caps>(() => {
     independentLatency: mihomoOrForkCore,
     coreUpdateCheck: mihomo,
     configPatch: mihomo,
+    modeSwitch: mihomoOrForkCore,
 
     // ---------- sing-box 内核侧(Clash 兼容通道) ----------
     // 自定义全局节点
@@ -246,6 +248,8 @@ const singboxCaps = computed<Caps>(() => ({
   latencyTest: true,
   // CloseConnection / CloseAllConnections 已在 driver 中接好，放开连接页的关闭入口。
   connectionsClose: true,
+  // SetClashMode 已在 driver 的 config.patch 中接好，放开模式切换。
+  modeSwitch: true,
   // GetRules / ChangeRuleStatus 已在 driver 中接好，放开规则页与临时禁用。
   rules: true,
   proxyProviderUpdate: true,
