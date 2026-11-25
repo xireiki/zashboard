@@ -17,7 +17,7 @@ import {
 } from '@/gen/daemon/started_service_pb'
 import { automaticDisconnection, iconReflectList, speedtestTimeout } from '@/store/settings'
 import { activeBackend } from '@/store/setup'
-import type { Config, Connection, Log, Proxy } from '@/types'
+import type { Config, Connection, Log, Proxy, ProxyProvider, RuleProvider } from '@/types'
 import { shallowRef, watch } from 'vue'
 import { apiVersion } from '../backend'
 import { defaultConfig } from '../config'
@@ -197,6 +197,7 @@ const subscribeConnections = (): Stream<ConnectionsPayload> => {
 
 let groups = new Map<string, Group>()
 let outbounds = new Map<string, GroupItem>()
+let providers: ProxyProvider[] = []
 let handles: StreamHandle[] = []
 let sessionKey = ''
 let ready: Promise<void> | null = null
@@ -255,6 +256,11 @@ const rebuild = () => {
   for (const item of outbounds.values()) {
     proxies[item.tag] = nodeToProxy(item)
   }
+  for (const provider of providers) {
+    for (const node of provider.proxies) {
+      if (!proxies[node.name]) proxies[node.name] = node
+    }
+  }
   for (const group of groups.values()) {
     for (const item of group.items) {
       if (!proxies[item.tag]) proxies[item.tag] = nodeToProxy(item)
@@ -289,7 +295,7 @@ const rebuild = () => {
   proxyGroupList.value = Array.from(groups.values())
     .filter((g) => g.items.length)
     .map((g) => g.tag)
-  proxyProviederList.value = []
+  proxyProviederList.value = providers
 }
 
 const nodeToProxy = (item: GroupItem): Proxy => {
@@ -313,6 +319,37 @@ const getHistoryFromItem = (item: GroupItem): Proxy['history'] =>
       ]
     : []
 
+const toISOString = (unixSeconds: bigint) =>
+  unixSeconds > 0n ? new Date(Number(unixSeconds) * 1000).toISOString() : ''
+
+// 不支持 providers 的内核会返回 UNIMPLEMENTED，静默降级为空列表。
+const fetchProviders = async (): Promise<ProxyProvider[]> => {
+  const client = getSingboxClient()?.client
+  if (!client) return []
+
+  try {
+    const res = await client.getProviders({})
+
+    return res.providers.map((provider) => ({
+      name: provider.tag,
+      vehicleType: provider.vehicleType,
+      updatedAt: toISOString(provider.updatedAt),
+      testUrl: '',
+      proxies: provider.outbounds.map(nodeToProxy),
+      subscriptionInfo: provider.subscriptionInfo
+        ? {
+            Upload: Number(provider.subscriptionInfo.upload),
+            Download: Number(provider.subscriptionInfo.download),
+            Total: Number(provider.subscriptionInfo.total),
+            Expire: Number(provider.subscriptionInfo.expire),
+          }
+        : undefined,
+    }))
+  } catch {
+    return []
+  }
+}
+
 const closeStreams = () => {
   handles.forEach((h) => h.close())
   handles = []
@@ -325,6 +362,7 @@ const stopProxies = () => {
   closeStreams()
   groups = new Map()
   outbounds = new Map()
+  providers = []
 }
 
 const ensureSession = () => {
@@ -386,9 +424,10 @@ const proxies: ProxiesDriver = {
   fetch: async () => {
     ensureSession()
     if (ready) await ready
+    providers = await fetchProviders()
     rebuild()
 
-    return { proxies: proxyMap.value, providers: [] } satisfies ProxiesPayload
+    return { proxies: proxyMap.value, providers } satisfies ProxiesPayload
   },
   select: async (group, name) => {
     const client = getSingboxClient()?.client
@@ -414,9 +453,18 @@ const proxies: ProxiesDriver = {
     await runURLTest(name, timeout)
     return getLatencyFromHistory(proxyMap.value[name]?.history)
   },
-  testProviderNode: async (_provider, name, _url, timeout) => {
-    await runURLTest(name, timeout)
-    return getLatencyFromHistory(proxyMap.value[name]?.history)
+  testProviderNode: async (provider, name, url, timeout) => {
+    const client = getSingboxClient()?.client
+    if (!client) return NOT_CONNECTED
+
+    const res = await client.healthCheckProviderOutbound({
+      tag: provider,
+      outboundTag: name,
+      url,
+      timeout,
+    })
+
+    return res.delays[name] || NOT_CONNECTED
   },
   testGroup: async (group, _url, timeout) => {
     await runURLTest(group, timeout)
@@ -428,15 +476,45 @@ const proxies: ProxiesDriver = {
     }
     return result
   },
-  updateProvider: async () => undefined,
-  healthCheckProvider: async () => undefined,
+  updateProvider: async (name) => {
+    const client = getSingboxClient()?.client
+    if (client) await client.updateProvider({ tag: name })
+  },
+  healthCheckProvider: async (name) => {
+    const client = getSingboxClient()?.client
+    if (client) await client.healthCheckProvider({ tag: name })
+  },
   fetchSmartWeights: async () => ({}),
   flushSmartWeights: async () => undefined,
 }
 
+const fetchRuleProviders = async (): Promise<RuleProvider[]> => {
+  const client = getSingboxClient()?.client
+  if (!client) return []
+
+  try {
+    const res = await client.getRuleProviders({})
+
+    return res.providers.map((provider) => ({
+      name: provider.tag,
+      vehicleType: provider.vehicleType,
+      behavior: provider.behavior,
+      format: '',
+      type: '',
+      ruleCount: Number(provider.ruleCount),
+      updatedAt: toISOString(provider.updatedAt),
+    }))
+  } catch {
+    return []
+  }
+}
+
 const rules: RulesDriver = {
-  fetch: async () => ({ rules: [], providers: [] }),
-  updateProvider: async () => undefined,
+  fetch: async () => ({ rules: [], providers: await fetchRuleProviders() }),
+  updateProvider: async (name) => {
+    const client = getSingboxClient()?.client
+    if (client) await client.updateRuleProvider({ tag: name })
+  },
   toggleDisabled: async () => undefined,
 }
 
