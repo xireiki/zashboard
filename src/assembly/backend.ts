@@ -244,6 +244,8 @@ const singboxCaps = computed<Caps>(() => ({
   // providers 是否可用由 GetProviders / GetRuleProviders 的实际返回决定，
   // 不支持时列表为空，相关入口自然不出现，不按版本号预判。
   latencyTest: true,
+  // CloseConnection / CloseAllConnections 已在 driver 中接好，放开连接页的关闭入口。
+  connectionsClose: true,
   proxyProviderUpdate: true,
   proxyProviderHealthCheck: true,
   ruleProviders: true,
